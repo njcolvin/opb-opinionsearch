@@ -12,20 +12,20 @@ API_KEY = os.environ["OPB_TEST_API_KEY"]
 # Initialize search query, jurisdiction, start date, and end date
 search_query = ""
 jurisdiction = ""
-start_date = None
-end_date = None
+after_date = None
+before_date = None
 
 # Create a Streamlit app
-st.title("Court Opinion Search")
+st.title("OpenProBono")
 st.header("Search Court Opinions")
 
 # Add a text input for the search query
 with st.form("search_form"):
     search_query = st.text_input("Enter your search query:")
     jurisdiction = st.selectbox("Select jurisdiction:", ["All", "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga", "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj", "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc", "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"])
-    start_date = st.date_input("Start date (optional):", value=None, min_value=datetime.date(1700, 1, 1), max_value=datetime.date.today())
-    end_date = st.date_input("End date (optional):", value=None)
-    num_results = st.selectbox("Display results:", [4, 8], index=1)
+    after_date = st.date_input("After date (optional):", value=None, min_value=datetime.date(1700, 1, 1), max_value=datetime.date.today())
+    before_date = st.date_input("Before date (optional):", value=None)
+    num_results = st.selectbox("Display results:", [4, 8], index=0)
     submitted = st.form_submit_button("Search")
 
 # Call the API endpoint with the search query and filters
@@ -34,8 +34,8 @@ if submitted:
         "query": search_query,
         "api_key": API_KEY,
         "jurisdiction": jurisdiction if jurisdiction != "All" else None,
-        "from_date": start_date.strftime("%Y-%m-%d") if start_date else None,
-        "to_date": end_date.strftime("%Y-%m-%d") if end_date else None,
+        "after_date": after_date.strftime("%Y-%m-%d") if after_date else None,
+        "before_date": before_date.strftime("%Y-%m-%d") if before_date else None,
         "k": num_results,
     }
     response = requests.get(API_ENDPOINT, params=params)
@@ -46,10 +46,20 @@ if submitted:
         results = response_json["results"]
         # Display search results as cards
         for result in results:
-            case_name = result["entity"]["metadata"]["case_name"]
+            if "case_name" in result["entity"]["metadata"]:
+                case_name = result["entity"]["metadata"]["case_name"]
+            else:
+                case_name = "Unknown Case"
             if len(case_name) > 200:
                 case_name = case_name[:200] + "..."
-            court_name = result["entity"]["metadata"]["court_name"]
+            if "court_name" in result["entity"]["metadata"]:
+                court_name = result["entity"]["metadata"]["court_name"]
+            else:
+                court_name = "Unknown Court"
+            if "author_name" in result["entity"]["metadata"]:
+                author_name = result["entity"]["metadata"]["author_name"]
+            else:
+                author_name = "Unknown Author"
             text = BeautifulSoup(result["entity"]["text"])
             for link in text.find_all("a"):
                 if "href" in link.attrs:
@@ -61,8 +71,9 @@ if submitted:
             url = COURTLISTENER + result["entity"]["metadata"]["absolute_url"]
             st.markdown(f"""<div style="width: 100%; border: 1px solid #ccc; padding: 10px;">
                     <h3>{case_name}</h3>
-                    <p><i>Match score</i>: {result['distance']}</p>
+                    <p><i>Match score</i>: {max([0, 1 - result['distance']])}</p>
                     <p><b>Court</b>: {court_name}</p>
+                    <p><b>Author</b>: {author_name}</p>
                     <p><b>Date filed</b>: {result['entity']['metadata']['date_filed']}</p>
                     <p><b>AI summary</b>: {result['entity']['metadata']['ai_summary']}</p>
                     <p><b>Full text link</b>: <a href="{url}">{url}</a></p>
