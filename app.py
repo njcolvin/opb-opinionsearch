@@ -41,6 +41,8 @@ def disable():
 
 if "disabled" not in st.session_state:
     st.session_state.disabled = False
+if "error" not in st.session_state:
+    st.session_state.error = False
 
 def search():
     params = {
@@ -51,7 +53,11 @@ def search():
         "before_date": before_date.strftime("%Y-%m-%d") if before_date else None,
         "k": num_results,
     }
-    return requests.get(API_ENDPOINT, params=params)
+    try:
+        response = requests.get(API_ENDPOINT, params=params)
+    except:
+        return None
+    return response
 
 def display_results(response_json: dict):
     results = response_json["results"]
@@ -71,23 +77,32 @@ def display_results(response_json: dict):
             author_name = result["entity"]["metadata"]["author_name"]
         else:
             author_name = "Unknown Author"
-        text = BeautifulSoup(result["entity"]["text"])
-        for link in text.find_all("a"):
-            if "href" in link.attrs:
-                href = link.attrs["href"]
-            if href.startswith("/"):
-                href = COURTLISTENER + href
-                link.attrs["href"] = href
-        text = text.prettify()
-        url = COURTLISTENER + result["entity"]["metadata"]["absolute_url"]
+        if "ai_summary" in result["entity"]["metadata"]:
+            ai_summary = result["entity"]["metadata"]["ai_summary"]
+        else:
+            ai_summary = "AI summary unavailable"
+        if result["source"] == "courtlistener":
+            text = BeautifulSoup(result["entity"]["text"], features="html.parser")
+            for link in text.find_all("a"):
+                if "href" in link.attrs:
+                    href = link.attrs["href"]
+                if href.startswith("/"):
+                    href = COURTLISTENER + href
+                    link.attrs["href"] = href
+            text = text.prettify()
+            url = COURTLISTENER + result["entity"]["metadata"]["absolute_url"]
+            full_text = f"""<p><b>Full text link</b>: <a href="{url}">{url}</a></p>"""
+        else: # cap
+            text = f"""<p>{result["entity"]["text"]}</p>"""
+            full_text = "<p><b>Full text link</b>: Full text unavailable</p>"
         st.markdown(f"""<div style="width: 100%; border: 1px solid #737373; padding: 10px;">
                 <h3>{i}. {case_name}</h3>
-                <p><i>Match score</i>: {max([0, 1 - result['distance']])}</p>
+                <p><i>Match score</i>: {max([0, (2 - result['distance']) / 2])}</p>
                 <p><b>Court</b>: {court_name}</p>
                 <p><b>Author</b>: {author_name}</p>
                 <p><b>Date filed</b>: {result['entity']['metadata']['date_filed']}</p>
-                <p><b>AI summary</b>: {result['entity']['metadata']['ai_summary']}</p>
-                <p><b>Full text link</b>: <a href="{url}">{url}</a></p>
+                <p><b>AI summary</b>: {ai_summary}</p>
+                {full_text}
                 <p><b>Matched excerpt</b>: </p>
                 <div style="border: 1px solid #737373; overflow-y: scroll; max-height: 300px;">{text}</div>""",
                 unsafe_allow_html=True)
@@ -104,18 +119,22 @@ with st.form("search_form"):
 if "response_json" in st.session_state:
     display_results(st.session_state.response_json)
 
+if st.session_state.error:
+    st.error("Something went wrong. Please try again later.")
+
 if submitted:
     # Call the API endpoint with the search query and filters
     response = search()
     # Check if the API call was successful
-    if response.status_code == 200:
+    if response is not None and response.status_code == 200:
         response_json = response.json()
         if response_json["message"] != "Success":
-            st.error("Something went wrong. Please try again later.")
+            st.session_state.error = True
         else:
+            st.session_state.error = False
             st.session_state.response_json = response_json
     else:
-        st.error("Something went wrong. Please try again later.")
+        st.session_state.error = True
     submitted = False
     st.session_state.disabled = False
     st.rerun()
