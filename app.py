@@ -75,6 +75,8 @@ def display_results(response_json: dict):
             court_name = "Unknown Court"
         if "author_name" in result["entity"]["metadata"]:
             author_name = result["entity"]["metadata"]["author_name"]
+        elif "author_str" in result["entity"]["metadata"]:
+            author_name = result["entity"]["metadata"]["author_str"]
         else:
             author_name = "Unknown Author"
         if "ai_summary" in result["entity"]["metadata"]:
@@ -95,12 +97,14 @@ def display_results(response_json: dict):
         else: # cap
             text = f"""<p>{result["entity"]["text"]}</p>"""
             full_text = "<p><b>Full text link</b>: Full text unavailable</p>"
+        date_filed = datetime.datetime.strptime(result["entity"]["metadata"]["date_filed"], "%Y-%m-%d")
+        date_filed = date_filed.strftime("%B %d, %Y")
         st.markdown(f"""<div style="width: 100%; border: 1px solid #737373; padding: 10px;">
                 <h3>{i}. {case_name}</h3>
                 <p><i>Match score</i>: {max([0, (2 - result['distance']) / 2])}</p>
                 <p><b>Court</b>: {court_name}</p>
                 <p><b>Author</b>: {author_name}</p>
-                <p><b>Date filed</b>: {result['entity']['metadata']['date_filed']}</p>
+                <p><b>Date filed</b>: {date_filed}</p>
                 <p><b>AI summary</b>: {ai_summary}</p>
                 {full_text}
                 <p><b>Matched excerpt</b>: </p>
