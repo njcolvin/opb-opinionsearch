@@ -58,17 +58,17 @@ if "error" not in st.session_state:
     st.session_state.error = False
 
 def search():
+    headers = {"X-API-KEY": API_KEY}
     params = {
         "keyword_query": keyword_query,
         "query": semantic_query,
-        "api_key": API_KEY,
         "jurisdiction": jurisdiction.lower() if jurisdiction != "All" else None,
         "after_date": after_date.strftime("%Y-%m-%d") if after_date else None,
         "before_date": before_date.strftime("%Y-%m-%d") if before_date else None,
         "k": num_results,
     }
     try:
-        response = requests.get(API_ENDPOINT, params=params)
+        response = requests.get(API_ENDPOINT, headers=headers, params=params)
     except:
         return None
     return response
