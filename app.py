@@ -29,11 +29,11 @@ The keyword search box will look for _exact_ matches to your query, and the sema
 
 ### Example
 
-Say you want to look for cases that cite the [Jones Act](https://en.wikipedia.org/wiki/Merchant_Marine_Act_of_1920). You can do this with the keyword search "Jones Act." You can also use semantic search, however "Jones Act" won't yield as good of results.
+Say you want to look for cases that cite the [Jones Act](https://en.wikipedia.org/wiki/Merchant_Marine_Act_of_1920). You can do this with the keyword search "Jones Act." You can also use semantic search, however "Jones Act" won't return as good of results.
                 
-A semantic search should be a _concept_, _idea_, or _definition_. For a named term or entity this is preferable to entering the name by itself. So, if you want to search for the Jones Act applied to workers' compensation, a semantic search query like "seaman workers compensation" yields more accurate results. These results don't always explicitly mention the term "Jones Act."
+Semantic search uses the _meaning_ of your query, not the exact words. This means your query should be a _concept_, _idea_, or _definition_. For a named term or entity, this is usually preferable to the name by itself. So, if you want to search for the Jones Act applied to workers' compensation, a semantic search query like "seaman workers compensation" returns more accurate results. However, the results won't always explicitly mention the term "Jones Act."
 
-You can also combine these two methods. Continuing our example, a keyword search for "Jones Act" and a semantic search for "workers compensation" returns opinions that explicitly mention the name _and_ are related to workers compensation.""")
+You can combine both methods in a single search. A keyword search for "Jones Act" and a semantic search for "workers compensation" returns opinions that explicitly mention the Act _and_ are related to workers compensation.""")
 st.info("Note: Search may be slow as opinions are summarized by AI.")
 st.warning("Disclaimer: AI summaries are not always 100% accurate.")
 
@@ -149,6 +149,10 @@ if st.session_state.error:
     st.error("Something went wrong. Please try again later.")
 
 if submitted:
+    if keyword_query == "" and semantic_query == "":
+        submitted = False
+        st.session_state.disabled = False
+        st.rerun()
     # Call the API endpoint with the search query and filters
     response = search()
     # Check if the API call was successful
